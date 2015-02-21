@@ -8,7 +8,7 @@ download process was less than reliable.  I modified this program and added
 a pre-download script which made the process reliable.
 
 
-The download program asserts RTS when starting waits for CTS before each send
+The download program asserts RTS when starting and waits for CTS before each send
 to the BCM20710.  It also sets the line discipline to TTY before downloading
 the firmware.
 
@@ -17,12 +17,14 @@ The pre-download script sets the BT_WAKE pin on the AP6210 (probably irrelevant)
 and toggles the BT_REST pin.  This toggling resets the BCM20710.  For kernel 3.4
 this script requires that the script.bin defines gpio pins 68 and 69.
 
+<pre>
 [gpio_para]
 gpio_used = 1
 gpio_num = 69
 ...
 gpio_pin_68 = port:PH18<0><default><default><0>
 gpio_pin_69 = port:PH24<0><default><default><0>
+</pre>
 
 
 With kernel 3.19 the process failed and has now been changed so it works
@@ -43,12 +45,14 @@ kernel 3.4 and is /dev/ttyS2 with kernel 3.19.  The scripts here determine the
 kernel version and react appropriately.
 
 
+<pre>
 The procedure now is:
 a) The /etc/init.d/bluetooth script calls /usr/local/bin/bt.load.
 b) bt.load determines which /dev/ttyS? to use and calls the patchram program.
 c) patchram opens the serial port and sets the line parameters.
 d) patchram calls the bt.init script which resets the BCM20710.
 e) patchram then downloads the firmware.
+</pre>
 
 
 The init.d/bluetooth script now enables hci using ttyS1 or ttyS2 rather than
