@@ -1,0 +1,20 @@
+#!/bin/bash
+
+EXTRA=
+
+if [ `uname -r | grep '^3.4.' ` ] ; then
+  BT_TTY=ttyS1
+else
+  EXTRA=-d
+  BT_TTY=ttyS2
+fi
+
+#pushd /usr/local/bin > /dev/null
+
+timeout -k1s 10s \
+brcm_patchram_plus	--patchram /lib/firmware/ap6210/bcm20710a1.hcd \
+					--bd_addr 00:53:4A:53:02:02 \
+					--no2bytes --tosleep 1000 $EXTRA \
+				/dev/${BT_TTY} 2> /tmp/trace
+
+#popd > /dev/null

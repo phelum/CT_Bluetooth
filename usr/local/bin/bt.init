@@ -1,0 +1,43 @@
+#!/bin/bash
+
+#	This is where we reset the BT device.
+
+if [ `uname -r | grep '^3.4.' ` ] ; then
+  BT_WAKE_NUM=69
+  BT_REST_NUM=68
+  BT_WAKE=gpio${BT_WAKE_NUM}_ph24
+  BT_REST=gpio${BT_REST_NUM}_ph18
+else
+  BT_WAKE_NUM=248
+  BT_REST_NUM=242
+  BT_WAKE=gpio${BT_WAKE_NUM}
+  BT_REST=gpio${BT_REST_NUM}
+fi
+
+if [ ! -x /sys/class/gpio/${BT_WAKE} ] ; then
+  echo -n ${BT_WAKE_NUM} > /sys/class/gpio/export
+fi
+
+if [ ! -x /sys/class/gpio/${BT_REST} ] ; then
+  echo -n ${BT_REST_NUM}  > /sys/class/gpio/export
+fi
+
+echo -n out > /sys/class/gpio/${BT_WAKE}/direction
+echo -n out > /sys/class/gpio/${BT_REST}/direction
+
+#	0 on the bt_reg_on (aka BT_REST) pin resets the device.
+
+echo -n 0   > /sys/class/gpio/${BT_WAKE}/value
+echo -n 0   > /sys/class/gpio/${BT_REST}/value
+
+#	1 on the bt_wake pin enables the bluetooth section ???
+#	By default, the chip uses active low for the wake pin.
+#	Actually, low or high, no noticeable effect.
+
+#echo -n 1   > /sys/class/gpio/${BT_WAKE}/value
+
+#	0 on the bt_reg_on (aka BT_REST) pin resets the device.
+#	Set low to reset then high to start device.
+
+echo -n 0   > /sys/class/gpio/${BT_REST}/value
+echo -n 1   > /sys/class/gpio/${BT_REST}/value
