@@ -14,35 +14,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  modified by Steven Saunderson (phelum.net) for more reliable operation
+ *
+ *  Modified by Steven Saunderson (phelum.net) for more reliable operation
  *  on A20 Cubietruck.
  *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
+ *  The download program asserts RTS when starting and waits for CTS before each send
+ *  to the BCM20710.  It also sets the line discipline to TTY before downloading
+ *  the firmware.
+ *  
+ *  The pre-download script sets the BT_WAKE pin on the AP6210 (probably irrelevant)
+ *  and toggles the BT_REST pin.  This toggling resets the BCM20710.  For kernel 3.4
+ *  this script requires that the script.bin defines gpio pins 68 and 69.
+ *  
+ *  [gpio_para]
+ *  gpio_used = 1
+ *  gpio_num = 69
+ *  ...
+ *  gpio_pin_68 = port:PH18&lt;0>&lt;default>&lt;default>&lt;0>
+ *  gpio_pin_69 = port:PH24&lt;0>&lt;default>&lt;default>&lt;0>
+ *  
+ *  With kernel 3.19 the process failed and has now been changed so it works
+ *  reliably with both kernels 3.4 and 3.19.  The change is that the pre-download
+ *  script is now called after the serial port is opened.  This is done by a 
+ *  "system" call in the download program and has the unfortunate side-effect that
+ *  the two steps (reset and download) are inextricably tied together and the
+ *  standard download program can never be used.  It appears that CTS on the 
+ *  BCM20710 must be asserted (held low) at the end of the reset pulse to get the
+ *  device to respond to serial communication.  The relevant UART on the A20 SoC
+ *  is uart2 and its RTS output connects to the BCM20710 CTS.
+ *  
+ *  My assumption here is that the old kernel left RTS asserted by default whereas
+ *  the new kernel negates it whenever the port is not open.
  *
  ******************************************************************************/
 
@@ -708,7 +710,7 @@ void read_prep (int fd)
 
 int read_waitfor7 (int fd)
 {
-	int oldbytes, bytes, sleeps = 0, sleep_limit = 100;
+	int oldbytes, bytes = 0, sleeps = 0, sleep_limit = 100;
 
 	ioctl(fd, FIONREAD, &bytes);
 
@@ -778,6 +780,7 @@ int read_event (int fd, uchar *buffer)
             reqd7 [0], reqd7 [1], reqd7 [2], reqd7 [3], reqd7 [4], reqd7 [5], reqd7 [6]);
         fprintf (stderr, "Rcvd     %02x%02x%02x%02x%02x%02x%02x\n",
             buffer [0], buffer [1], buffer [2], buffer [3], buffer [4], buffer [5], buffer [6]);
+		return 2;
     }
 
 	return 0;
@@ -832,14 +835,20 @@ void proc_reset ()
 
 void proc_patchram ()
 {
-	int len;
-
-	hci_send_cmd (hci_download_minidriver, sizeof (hci_download_minidriver));
+	int len, erc;
 
 	//	We get a response here with kernel 3.4 but not with 3.19 ??
 	//	We must let it time-out to avoid mismatch errors with subsequent replies.
 
-	read_event (uart_fd, buffer);
+	hci_send_cmd (hci_download_minidriver, sizeof (hci_download_minidriver));
+	erc = read_event (uart_fd, buffer);
+
+	//	If error, no use trying again because we just get the same time-out.
+
+//	if (erc > 0) {
+//		hci_send_cmd (hci_download_minidriver, sizeof (hci_download_minidriver));
+//		read_event (uart_fd, buffer);
+//	}
 
 	if (!no2bytes) {
 		read (uart_fd, &buffer[0], 2);
@@ -1061,3 +1070,4 @@ int main (int argc, char **argv)
 	fprintf (stderr, "F/W load done\n");
 	exit (0);
 }
+

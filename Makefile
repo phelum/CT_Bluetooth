@@ -21,11 +21,7 @@
 
 CFLAGS=
 
-all : brcm_patchram_plus brcm_patchram_plus_h5 brcm_patchram_plus_usb
-
-brcm_patchram_plus_h5 : brcm_patchram_plus_h5.o
+all : brcm_patchram_plus
 
 brcm_patchram_plus : brcm_patchram_plus.o
-
-brcm_patchram_plus_usb : brcm_patchram_plus_usb.o
 
