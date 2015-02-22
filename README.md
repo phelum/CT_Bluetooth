@@ -17,14 +17,12 @@ The pre-download script sets the BT_WAKE pin on the AP6210 (probably irrelevant)
 and toggles the BT_REST pin.  This toggling resets the BCM20710.  For kernel 3.4
 this script requires that the script.bin defines gpio pins 68 and 69.
 
-<pre>
-[gpio_para]
-gpio_used = 1
-gpio_num = 69
-...
-gpio_pin_68 = port:PH18&lt;0>&lt;default>&lt;default>&lt;0>
-gpio_pin_69 = port:PH24&lt;0>&lt;default>&lt;default>&lt;0>
-</pre>
+ [gpio_para]
+ gpio_used = 1
+ gpio_num = 69
+ ...
+ gpio_pin_68 = port:PH18&lt;0>&lt;default>&lt;default>&lt;0>
+ gpio_pin_69 = port:PH24&lt;0>&lt;default>&lt;default>&lt;0>
 
 
 With kernel 3.19 the process failed and has now been changed so it works
