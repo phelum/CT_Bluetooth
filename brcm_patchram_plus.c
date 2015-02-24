@@ -30,8 +30,8 @@
  *  gpio_used = 1
  *  gpio_num = 69
  *  ...
- *  gpio_pin_68 = port:PH18&lt;0>&lt;default>&lt;default>&lt;0>
- *  gpio_pin_69 = port:PH24&lt;0>&lt;default>&lt;default>&lt;0>
+ *  gpio_pin_68 = port:PH18<0><default><default><0>
+ *  gpio_pin_69 = port:PH24<0><default><default><0>
  *  
  *  With kernel 3.19 the process failed and has now been changed so it works
  *  reliably with both kernels 3.4 and 3.19.  The change is that the pre-download
@@ -562,25 +562,25 @@ int parse_cmd_line (int argc, char **argv)
 
 
 void dump (uchar *out, int len)
-{
+  {
 	int i;
 
-	for (i = 0; i < len; i++) {
-		if (i && !(i % 16)) {
+	for (i = 0; i < len; i++)
+	  {
+		if (i && !(i % 16))
 			fprintf(stderr, "\n");
-		}
 
 		fprintf(stderr, "%02x ", out[i]);
-	}
+	  }
 
 	fprintf(stderr, "\n");
-}
+
+	return;
+  }
 
 
 void init_uart ()
-{
-//	usleep (10000);
-
+  {
 	tcflush (uart_fd, TCIOFLUSH);
 	tcgetattr (uart_fd, &termios);
 
@@ -607,14 +607,30 @@ void init_uart ()
 	cfsetispeed (&termios, B115200);
 	tcsetattr (uart_fd, TCSANOW, &termios);
 
-	int status = TIOCM_RTS;
-
-	ioctl (uart_fd, TIOCMGET, &status);		// our RTS tells other end it's okay to send.
-	status |=  TIOCM_RTS;					// also tells the BCM20710 to use uart mode.
-	ioctl (uart_fd, TIOCMSET, status);
-
     return;
-} 
+  } 
+
+
+int	AssertRTS		(int fd)
+  {
+	int status;
+
+	status = TIOCM_RTS;
+	ioctl (fd, TIOCMBIS, &status);			// set RTS bit.
+
+	return 0;
+  }	
+
+
+int	NegateRTS		(int fd)
+  {
+	int status;
+
+	status = TIOCM_RTS;
+	ioctl (fd, TIOCMBIC, &status);			// clear RTS bit.
+
+	return 0;
+  }	
 
 
 void proc_enable_tty ()
@@ -644,9 +660,11 @@ void proc_enable_tty ()
 	if (debug)
 	  fprintf (stderr, "Current discipline = %d\n", a);
 
-//		With kernel 3.19 we can't reset the BCM20710 before opening the serial port.
+//		With kernel 3.19 we can't reset the BCM20710 with RTS negated.
 //		So we call the init script now to do the job.
 
+	AssertRTS (uart_fd);					// our RTS tells other end it's okay to send.
+											// also tells the BCM20710 to use uart mode.
 	int erc;
 
 	if (debug)
@@ -657,67 +675,75 @@ void proc_enable_tty ()
 	if (debug || erc)
 	  fprintf (stderr, "Script result = %d\n", erc);
 
+//		Abandoned experiment.
+
+//	usleep (30000);
+//	NegateRTS (uart_fd);					// negate RTS
+//	usleep (50000);
+
 	return;
 }
 
 
 void wait_cts (int fd)
-{
+  {
 	int status = TIOCM_RTS;
 
 	ioctl (fd, TIOCMGET, &status);
 
-	if (!(status & TIOCM_CTS)) {
-
+	if (!(status & TIOCM_CTS))
+	  {
 		if (debug)
 			fprintf (stderr, "Waiting CTS...");
 
-		while (!(status & TIOCM_CTS)) {
+		while (!(status & TIOCM_CTS))
+		  {
 			usleep (10000);
 			ioctl (fd, TIOCMGET, &status);
-		}
+		  }
 
 		if (debug)
 			fprintf (stderr, "done\n");
-	}
+	  }
 
 	return;
-}
+  }
 
 
 void read_prep (int fd)
-{
-	int status = TIOCM_RTS;
+  {
+	int status;
 
-	ioctl (fd, TIOCMGET, &status);		// our RTS tells other end
-	status |=  TIOCM_RTS;				// it's okay to send.
-	ioctl (fd, TIOCMSET, status);
-
+	AssertRTS (fd);						// our RTS tells other end
+										// it's okay to send.
 	ioctl (fd, TIOCMGET, &status);
 
-	if (debug) {
+	if (debug)
+	  {
 		fprintf (stderr, "RTS = %x\n", (status & TIOCM_RTS) > 0);
 		fprintf (stderr, "CTS = %x\n", (status & TIOCM_CTS) > 0);
 		fprintf (stderr, "DTR = %x\n", (status & TIOCM_DTR) > 0);
 		fprintf (stderr, "DCD = %x\n", (status & TIOCM_CAR) > 0);
-	}
+	  }
 
 //	wait_cts (fd);						// probably futile
 
 	return;
-}
+  }
 
 
 int read_waitfor7 (int fd)
-{
+  {
 	int oldbytes, bytes = 0, sleeps = 0, sleep_limit = 100;
 
-	ioctl(fd, FIONREAD, &bytes);
+	ioctl (fd, FIONREAD, &bytes);
 
-	if ((oldbytes = bytes) < 7) {
+	if ((oldbytes = bytes) < 7)
+	  {
 		if (debug)
 			fprintf (stderr, "Waiting for 7 bytes...");
-		while (bytes < 7) {
+		while (bytes < 7)
+		  {
 			usleep (1000);
 
 			ioctl (fd, FIONREAD, &bytes);
@@ -735,18 +761,18 @@ int read_waitfor7 (int fd)
 				reqd7 [0], reqd7 [1], reqd7 [2], reqd7 [3], reqd7 [4], reqd7 [5], reqd7 [6]);
 
 			return 1; 
-		}
-	}
+		  }
+	  }
 
 	if (debug)
 		fprintf (stderr, "done\n");
 
 	return 0;
-}
+  }
 
 
 int read_event (int fd, uchar *buffer)
-{
+  {
 	int i = 0;
 	int len = 3;
 	int count;
@@ -755,46 +781,50 @@ int read_event (int fd, uchar *buffer)
 	if (read_waitfor7 (fd) > 0)
 		return 1;
 
-	while ((count = read(fd, &buffer[i], len)) < len) {
+	while ((count = read(fd, &buffer[i], len)) < len)
+	  {
 		i += count;
 		len -= count;
-	}
+	  }
 
 	i += count;
 	len = buffer[2];
 
-	while ((count = read(fd, &buffer[i], len)) < len) {
+	while ((count = read(fd, &buffer[i], len)) < len)
+	  {
 		i += count;
 		len -= count;
-	}
+	  }
 
-	if (debug) {
+	if (debug)
+	  {
 		count += i;
-
 		fprintf(stderr, "received %d\n", count);
 		dump(buffer, count);
-	}
+	  }
     
-    if (memcmp (buffer, reqd7, 7)) {
+    if (memcmp (buffer, reqd7, 7))
+	  {
         fprintf (stderr, "Expected %02x%02x%02x%02x%02x%02x%02x\n",
             reqd7 [0], reqd7 [1], reqd7 [2], reqd7 [3], reqd7 [4], reqd7 [5], reqd7 [6]);
         fprintf (stderr, "Rcvd     %02x%02x%02x%02x%02x%02x%02x\n",
             buffer [0], buffer [1], buffer [2], buffer [3], buffer [4], buffer [5], buffer [6]);
 		return 2;
-    }
+      }
 
 	return 0;
-}
+  }
 
 
 void hci_send_cmd (uchar *buf, int len)
-{
+  {
 	wait_cts (uart_fd);
 
-	if (debug) {
+	if (debug)
+	  {
 		fprintf(stderr, "writing\n");
 		dump(buf, len);
-	}
+	  }
 
 	write (uart_fd, buf, len);
 
@@ -805,11 +835,13 @@ void hci_send_cmd (uchar *buf, int len)
     reqd7 [4] = buf [1];
     reqd7 [5] = buf [2];
     reqd7 [6] = 0x00;
-}
+
+	return;
+  }
 
 
 void proc_reset ()
-{
+  {
 	int		tries = 0;
 
 	while (1)
@@ -830,7 +862,7 @@ void proc_reset ()
 		usleep (tosleep);
 
 	return;
-}
+  }
 
 
 void proc_patchram ()
@@ -1029,7 +1061,7 @@ int main (int argc, char **argv)
 
 	proc_enable_tty ();		// set discipline, reset device.
 
-	read_prep (uart_fd);
+//	read_prep (uart_fd);
 
 	proc_reset();
 
