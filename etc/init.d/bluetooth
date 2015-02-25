@@ -82,18 +82,13 @@ alias disable_hci_input=hci_input
 start_uarts()
 {
 	[ -f $HCIATTACH ] && [ -f $UART_CONF ] || return
-#	grep -v '^#' $UART_CONF | while read i; do
-#               if [ "$VERBOSE" != no ]; then
-#                       $HCIATTACH $i > /dev/null 2>&1
-#               else
-#                       $HCIATTACH $i > /dev/null 2>&1
-#               fi
-#	done
-	if [ `uname -r | grep '^3.4.' ` ] ; then
-		$HCIATTACH /dev/ttyS1 any > /dev/null 2>&1
-	else
-		$HCIATTACH /dev/ttyS2 any > /dev/null 2>&1
-	fi
+	grep -v '^#' $UART_CONF | while read i; do
+               if [ "$VERBOSE" != no ]; then
+                       $HCIATTACH $i > /dev/null 2>&1
+               else
+                       $HCIATTACH $i > /dev/null 2>&1
+               fi
+	done
 }
 
 stop_uarts()
@@ -151,7 +146,6 @@ case $1 in
 		exit 0
 	fi
 
-#	. /usr/local/bin/bt.prep
 	. /usr/local/bin/bt.load
 
 	start-stop-daemon --start $SSD_OPTIONS

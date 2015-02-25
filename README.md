@@ -40,24 +40,33 @@ is uart2 and its RTS output connects to the BCM20710 CTS.
 My assumption here is that the old kernel left RTS asserted by default whereas
 the new kernel negates it whenever the port is not open.
 
-Another difference between kernels 3.4 and 3.19 is that uart2 is /dev/ttyS1 with
-kernel 3.4 and is /dev/ttyS2 with kernel 3.19.  The scripts here determine the
-kernel version and react appropriately.
+
+With the 3.4 kernel, the Bluetooth UART is accessed via /dev/ttyS1.  With the 
+3.19 kernel and the standard .dtb (sun7i-a20-cubietruck.dtb), the UART is
+accessed via /dev/ttyS2.  With the 3.19 kernel and the .dtb supplied in this
+repository, the UART is accessed via /dev/ttyS1.  Two files contain references
+to the serial port and these might need to be changed.  The files are
+
+<pre>
+a) /etc/bluetooth/uart
+b) /usr/local/bin/bt.load
+</pre>
+
+Both these files reference /dev/ttyS1 and both might need to be changed to
+/dev/ttyS2.
 
 
 <pre>
 The procedure now is:
 a) The /etc/init.d/bluetooth script calls /usr/local/bin/bt.load.
-b) bt.load determines which /dev/ttyS? to use and calls the patchram program.
+b) bt.load determines parameters to use and calls the patchram program.
 c) patchram opens the serial port and sets the line parameters.
 d) patchram calls the bt.init script which resets the BCM20710.
 e) patchram then downloads the firmware.
 </pre>
 
 
-The init.d/bluetooth script now enables hci using ttyS1 or ttyS2 rather than
-using the device specified in the /etc/bluetooth/uart file.
-
 The patchram console output is redirected to /tmp/trace.  Without debug (set in
 the bt.load script) this output is minimal.  With debug it lists each transmit
 and receive.
+

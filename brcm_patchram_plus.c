@@ -584,28 +584,19 @@ void init_uart ()
 	tcflush (uart_fd, TCIOFLUSH);
 	tcgetattr (uart_fd, &termios);
 
-#ifndef __CYGWIN__
-	cfmakeraw (&termios);
-#else
-	termios.c_iflag &= ~(IGNBRK | IGNPAR | BRKINT | PARMRK | INPCK | ISTRIP
-                | INLCR | IGNCR | ICRNL | IUCLC | IXON | IXANY | IXOFF | IMAXBEL | IUTF8);
-	termios.c_oflag &= ~OPOST;
-	termios.c_lflag &= ~(ECHO | ECHOE | ECHONL | ICANON | ISIG | IEXTEN);
-	termios.c_cflag &= ~(CBAUD | EXTA | EXTB | CSIZE | CSTOPB | PARENB | CRTSCTS);
-	termios.c_cflag |= B115200 | CS8 | CREAD | CLOCAL;
-#endif
+//		New brutal approach.  Reset all then set what we want.
 
-	termios.c_cflag &= ~CRTSCTS;				// disable so we can control RTS.
+	termios.c_iflag = 0;
+	termios.c_oflag = 0;
+	termios.c_cflag = 0;
+	termios.c_cflag |= B115200 | CS8 | CREAD | CLOCAL;
+	termios.c_lflag = 0;
+
+	cfsetispeed (&termios, B115200);
+	cfsetospeed (&termios, B115200);
+
 	tcsetattr (uart_fd, TCSANOW, &termios);
 	tcflush   (uart_fd, TCIOFLUSH);
-//	tcsetattr (uart_fd, TCSANOW, &termios);		// not sure why this was repeated ??
-//	tcflush   (uart_fd, TCIOFLUSH);				// seems to work without it.
-//	tcflush   (uart_fd, TCIOFLUSH);
-
-	tcgetattr (uart_fd, &termios);
-	cfsetospeed (&termios, B115200);
-	cfsetispeed (&termios, B115200);
-	tcsetattr (uart_fd, TCSANOW, &termios);
 
     return;
   } 
