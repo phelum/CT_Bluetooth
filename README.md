@@ -43,10 +43,15 @@ My assumption here is that the old kernel left RTS asserted by default whereas
 the new kernel negates it whenever the port is not open.
 
 An alternative provided here is a "reset" program that can be run before the
-download program.  This "reset" program requires system access via /dev/mem.
-Some kernels might not allow this access.  The bt.load script proveded here
-can be modified to use this "reset" program or the old approach where the
-bt.init script is run by the download program.
+download program.  This "reset" program by default uses system access via /dev/mem.
+This can be changed to use an external script if desired.
+
+The options are all specified in the bt.load script.  As supplied it will run
+the "reset" program which uses /dev/mem to reset the device, then run the "patch"
+program to download the firmware.  The bt.load script can be changed so the
+"reset" program will use an external script rather than /dev/mem to reset the
+device.  Or the bt.load script can be changed so it just calls the "patch"
+program and gets it to reset the device as well as download the firmware.
 
 
 With the 3.4 kernel, the Bluetooth UART is accessed via /dev/ttyS1.  With the 
@@ -77,9 +82,10 @@ e) patchram then downloads the firmware.
 The procedure (new method) is:
 a) The /etc/init.d/bluetooth script calls /usr/local/bin/bt.load.
 b) bt.load determines parameters to use and calls the reset program.
-c) bt.load calls the patchram program.
-d) patchram opens the serial port and sets the line parameters.
-e) patchram then downloads the firmware.
+c) The reset program uses /dev/mem or a script to reset the device.
+d) bt.load calls the patchram program.
+e) patchram opens the serial port and sets the line parameters.
+f) patchram then downloads the firmware.
 </pre>
 
 

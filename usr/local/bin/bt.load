@@ -1,17 +1,29 @@
 #!/bin/bash
 
+#	Change this MAC addr if required.
+
+BT_MAC_ADDR=11:22:33:44:55:66
+
 #	The BCM20710 must be reset (while its CTS pin is low) to enable
 #	UART mode so the patchram program can dowmload the firmware.
 #	The new approach is to run brcm_bt_reset first.
 
 EXTRA=
-INIT_SCRIPT=
+RESET_SCRIPT=
+PATCH_SCRIPT=
 
 #	Uncomment the line below to select the old way to reset the
 #	BCM20710.  This is done using a callout in the download program.
 #	bt.init is the standard script but you can change this if desired.
 
-#INIT_SCRIPT=bt.init
+#PATCH_SCRIPT=bt.init
+
+#	If using the new "reset" program it will by default use /dev/mem
+#	to toggle the GPIOs.  Uncomment (and possibly change) the 
+#	following line if you want it to use a custom script to
+#	toggle the pins.
+
+#RESET_SCRIPT=bt.init
 
 #	We set the debug option (-d) by default for new kernels.
 #	Comment the EXTRA=-d line if all seems okay.
@@ -26,14 +38,18 @@ fi
 
 #	If new approach, we run the "reset" program here.
 
-if [ "$INIT_SCRIPT" = "" ] ; then
-  brcm_bt_reset ${BT_TTY}
+if [ "$PATCH_SCRIPT" = "" ] ; then
+  brcm_bt_reset ${BT_TTY} ${RESET_SCRIPT}
 fi
 
 #	Now we run the download program with a time limit of 10 seconds.
 
 timeout -k1s 10s \
 brcm_patchram_plus	--patchram /lib/firmware/ap6210/bcm20710a1.hcd \
-					--bd_addr 00:53:4A:53:02:02 \
-					--no2bytes --tosleep 2500 $EXTRA \
-				${BT_TTY} ${INIT_SCRIPT} 2> /tmp/trace
+					--bd_addr ${BT_MAC_ADDR} \
+					--no2bytes \
+					--tosleep 2500 \
+					$EXTRA \
+				${BT_TTY} \
+				${PATCH_SCRIPT} \
+				2> /tmp/trace

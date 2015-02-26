@@ -38,21 +38,19 @@
 #define PH_DATA 0x10C / 4
 
 
-int uart_fd = -1;
-
-
 int acquire_uart (char *device_id)
   {
-	struct termios termios;
+	int 			uart_fd = -1;
+	struct termios	termios;
 
 	if ((uart_fd = open (device_id, O_RDWR | O_NOCTTY )) == -1)
 	  {
 		fprintf (stderr, "port %s could not be opened, error %d\n",
 					device_id, errno);
-		exit (1);
+		exit (-1);
 	  }
 
-	tcflush (uart_fd, TCIOFLUSH);
+	tcflush   (uart_fd, TCIOFLUSH);
 	tcgetattr (uart_fd, &termios);
 
 	termios.c_iflag = 0;
@@ -67,12 +65,10 @@ int acquire_uart (char *device_id)
 	tcsetattr (uart_fd, TCSANOW, &termios);
 	tcflush   (uart_fd, TCIOFLUSH);
 
-	int status;
-
-	status = TIOCM_RTS;
+	int		status = TIOCM_RTS;
 	ioctl (uart_fd, TIOCMBIS, &status);				// set RTS bit.
 
-    return 0;
+    return uart_fd;
   } 
 
 
@@ -102,7 +98,7 @@ int fiddle_pins ()
 	  {
 		perror ("Unable to mmap file");
 		printf ("pc:%lx\n", (unsigned long) pc);
-		return (-1);
+		return (-2);
 	  }
 
 	ucptr = ((unsigned char *) pc) + addr_offset;
@@ -114,8 +110,8 @@ int fiddle_pins ()
 	ulptr [PH_CFG2] = data;
 
 	data = ulptr [PH_CFG3];
-	data &= 0xFFFFFFF0;							// PH24 (BT_WAKE) is output
-	data |= 0x00000001;
+	data &= 0xFFFFFFF0;
+	data |= 0x00000001;							// PH24 (BT_WAKE) is output
 	ulptr [PH_CFG3] = data;
 
 	data = ulptr [PH_DATA];
@@ -128,8 +124,6 @@ int fiddle_pins ()
 	data |= (1 << 18);							// REST high
 	ulptr [PH_DATA] = data;
 
-	usleep (30000);								// wait 30ms
-
 	close (fd);
 
 	return 0;
@@ -138,19 +132,36 @@ int fiddle_pins ()
 
 int main (int argc, char *argv [])
   {
+	int 		uart_fd = -1;
+	int			erc = 0;
+
+
 	if (argc < 2)
 	  {
-		fprintf (stderr, "Need serial port device name in tail\n");
+		fprintf (stderr,	"Need serial port device name in tail\n"
+							"\n"
+							"Tail: <serial port> [init script]\n"
+							"serial port is normally /dev/ttyS1\n"
+							"init script (e.g. bt.init) is script used to toggle BT pins\n"
+							"if no init script, this program will toggle them using /dev/mem\n"
+			);
 		return 1;
 	  }
 
-	acquire_uart (argv [1]);
+	if (0 > (uart_fd = acquire_uart (argv [1])))
+		return 2;
 
-	fiddle_pins ();
+	if (argc < 3)								// use /dev/mem ?
+		erc = fiddle_pins ();
+	else										// external script ?
+		if (0 != (erc = system (argv [2])))
+			fprintf (stderr, "Script result = %d\n", erc);
+
+	usleep (30000);								// hold RTS for 30ms
 
 	close (uart_fd);
 
-	return 0;
+	return erc;
   }
 
 
