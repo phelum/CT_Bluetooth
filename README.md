@@ -10,7 +10,9 @@ a pre-download script which made the process reliable.
 
 The download program asserts RTS when starting and waits for CTS before each send
 to the BCM20710.  It also sets the line discipline to TTY before downloading
-the firmware.
+the firmware.  It also times out and continues if a reply is not received
+within a reasonable time.  There is one command in particular (the "start
+download" command) where frequently no reply is received.
 
 
 The pre-download script sets the BT_WAKE pin on the AP6210 (probably irrelevant)
@@ -40,6 +42,12 @@ is uart2 and its RTS output connects to the BCM20710 CTS.
 My assumption here is that the old kernel left RTS asserted by default whereas
 the new kernel negates it whenever the port is not open.
 
+An alternative provided here is a "reset" program that can be run before the
+download program.  This "reset" program requires system access via /dev/mem.
+Some kernels might not allow this access.  The bt.load script proveded here
+can be modified to use this "reset" program or the old approach where the
+bt.init script is run by the download program.
+
 
 With the 3.4 kernel, the Bluetooth UART is accessed via /dev/ttyS1.  With the 
 3.19 kernel and the standard .dtb (sun7i-a20-cubietruck.dtb), the UART is
@@ -57,7 +65,7 @@ Both these files reference /dev/ttyS1 and both might need to be changed to
 
 
 <pre>
-The procedure now is:
+The procedure (callout method) is:
 a) The /etc/init.d/bluetooth script calls /usr/local/bin/bt.load.
 b) bt.load determines parameters to use and calls the patchram program.
 c) patchram opens the serial port and sets the line parameters.
@@ -65,6 +73,19 @@ d) patchram calls the bt.init script which resets the BCM20710.
 e) patchram then downloads the firmware.
 </pre>
 
+<pre>
+The procedure (new method) is:
+a) The /etc/init.d/bluetooth script calls /usr/local/bin/bt.load.
+b) bt.load determines parameters to use and calls the reset program.
+c) bt.load calls the patchram program.
+d) patchram opens the serial port and sets the line parameters.
+e) patchram then downloads the firmware.
+</pre>
+
+
+The new approach (reset program) means it is almost possible to use the
+standard Broadcom patchram program.  But it often hangs waiting for a reply
+to the "start download" command.
 
 The patchram console output is redirected to /tmp/trace.  Without debug (set in
 the bt.load script) this output is minimal.  With debug it lists each transmit

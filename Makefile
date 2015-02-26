@@ -21,7 +21,17 @@
 
 CFLAGS=
 
-all : brcm_patchram_plus
+all : brcm_patchram_plus brcm_bt_reset
+
+brcm_patchram_plus.o : brcm_patchram_plus.c
+	gcc -Wall -c -o brcm_patchram_plus.o brcm_patchram_plus.c
 
 brcm_patchram_plus : brcm_patchram_plus.o
+	gcc -o brcm_patchram_plus brcm_patchram_plus.o
+
+brcm_bt_reset.o : brcm_bt_reset.c
+	gcc -Wall -c -o brcm_bt_reset.o brcm_bt_reset.c
+
+brcm_bt_reset : brcm_bt_reset.o
+	gcc -o brcm_bt_reset brcm_bt_reset.o
 

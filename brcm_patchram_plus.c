@@ -154,6 +154,7 @@
 
 #include <string.h>
 #include <signal.h>
+#include <unistd.h>
 
 #ifdef ANDROID
 #include <cutils/properties.h>
@@ -196,7 +197,7 @@ int i2s = 0;
 int no2bytes = 0;
 int tosleep = 0;
 int baudrate = 0;
-char	script_name [] = "bt.init";
+char	script_name [] = ""; // was "bt.init";
 
 struct termios termios;
 
@@ -490,7 +491,7 @@ int parse_cmd_line (int argc, char **argv)
 		parse_scopcm, parse_i2s, parse_no2bytes, parse_tosleep};
 
 	while (1) {
-		int this_option_optind = optind ? optind : 1;
+//		int this_option_optind = optind ? optind : 1;
 		int option_index = 0;
 
 		static struct option long_options[] = {
@@ -548,14 +549,21 @@ int parse_cmd_line (int argc, char **argv)
 		return(1);
 	}
 
-	if (optind < argc) {
+	if (optind < argc)
+	  {
 		if (debug)
 			fprintf (stderr, "%s \n", argv [optind]);
-		if ((uart_fd = open (argv [optind], O_RDWR | O_NOCTTY )) == -1) {
-			fprintf(stderr, "port %s could not be opened, error %d\n",
+
+		if ((uart_fd = open (argv [optind], O_RDWR | O_NOCTTY )) == -1)
+		 {
+			fprintf (stderr, "port %s could not be opened, error %d\n",
 					argv [optind], errno);
-		}
-	}
+		 }
+
+		if (++optind < argc)						// helper program ??
+			strcpy (script_name, argv [optind]);
+
+	  }
 
 	return(0);
 }
@@ -652,25 +660,25 @@ void proc_enable_tty ()
 	  fprintf (stderr, "Current discipline = %d\n", a);
 
 //		With kernel 3.19 we can't reset the BCM20710 with RTS negated.
-//		So we call the init script now to do the job.
+//		So we call the init script (if specified) now to do the job.
+//		An alternative approach is to run a "reset" program before
+//		this download program.
 
 	AssertRTS (uart_fd);					// our RTS tells other end it's okay to send.
 											// also tells the BCM20710 to use uart mode.
-	int erc;
 
-	if (debug)
-	  fprintf (stderr, "Calling init script\n");
+	if (script_name [0])
+	  {
+		int erc;
 
-	erc = system (script_name);
+		if (debug)
+		  fprintf (stderr, "Calling init script\n");
 
-	if (debug || erc)
-	  fprintf (stderr, "Script result = %d\n", erc);
+		erc = system (script_name);
 
-//		Abandoned experiment.
-
-//	usleep (30000);
-//	NegateRTS (uart_fd);					// negate RTS
-//	usleep (50000);
+		if (debug || erc)
+		  fprintf (stderr, "Script result = %d\n", erc);
+	  }
 
 	return;
 }
@@ -858,20 +866,15 @@ void proc_reset ()
 
 void proc_patchram ()
 {
-	int len, erc;
+	int len;
 
 	//	We get a response here with kernel 3.4 but not with 3.19 ??
 	//	We must let it time-out to avoid mismatch errors with subsequent replies.
 
 	hci_send_cmd (hci_download_minidriver, sizeof (hci_download_minidriver));
-	erc = read_event (uart_fd, buffer);
+	read_event (uart_fd, buffer);
 
 	//	If error, no use trying again because we just get the same time-out.
-
-//	if (erc > 0) {
-//		hci_send_cmd (hci_download_minidriver, sizeof (hci_download_minidriver));
-//		read_event (uart_fd, buffer);
-//	}
 
 	if (!no2bytes) {
 		read (uart_fd, &buffer[0], 2);
@@ -1040,12 +1043,12 @@ int main (int argc, char **argv)
 	read_default_bdaddr();
 #endif
 
-	if (parse_cmd_line(argc, argv)) {
-		exit(1);
+	if (parse_cmd_line (argc, argv)) {
+		exit (1);
 	}
 
 	if (uart_fd < 0) {
-		exit(2);
+		exit (2);
 	}
 
 	init_uart ();
