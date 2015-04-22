@@ -2,7 +2,7 @@
 
 #	Change this MAC addr if required.
 
-BT_MAC_ADDR=11:22:33:44:55:66
+BT_MAC_ADDR=00:53:4A:53:02:02
 
 #	The BCM20710 must be reset (while its CTS pin is low) to enable
 #	UART mode so the patchram program can dowmload the firmware.
@@ -33,7 +33,9 @@ if [ `uname -r | grep '^3.4.' ` ] ; then
   BT_TTY=/dev/ttyS1
 else
   EXTRA=-d
-  BT_TTY=/dev/ttyS1
+  BT_TTY=/dev/ttyS2
+  [ -d /sys/devices/platform/soc@01c00000/1c28800.serial/tty/ttyS1 ] && BT_TTY=/dev/ttyS1
+  [ -d /sys/devices/platform/soc@01c00000/1c28800.serial/tty/ttyS2 ] && BT_TTY=/dev/ttyS2
 fi
 
 #	If new approach, we run the "reset" program here.

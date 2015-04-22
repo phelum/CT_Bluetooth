@@ -570,25 +570,24 @@ int parse_cmd_line (int argc, char **argv)
 
 
 void dump (uchar *out, int len)
-  {
+{
 	int i;
 
-	for (i = 0; i < len; i++)
-	  {
+	for (i = 0; i < len; i++) {
 		if (i && !(i % 16))
 			fprintf(stderr, "\n");
 
 		fprintf(stderr, "%02x ", out[i]);
-	  }
+	}
 
 	fprintf(stderr, "\n");
 
 	return;
-  }
+}
 
 
 void init_uart ()
-  {
+{
 	tcflush (uart_fd, TCIOFLUSH);
 	tcgetattr (uart_fd, &termios);
 
@@ -607,29 +606,29 @@ void init_uart ()
 	tcflush   (uart_fd, TCIOFLUSH);
 
     return;
-  } 
+} 
 
 
 int	AssertRTS		(int fd)
-  {
+{
 	int status;
 
 	status = TIOCM_RTS;
 	ioctl (fd, TIOCMBIS, &status);			// set RTS bit.
 
 	return 0;
-  }	
+}	
 
 
 int	NegateRTS		(int fd)
-  {
+{
 	int status;
 
 	status = TIOCM_RTS;
 	ioctl (fd, TIOCMBIC, &status);			// clear RTS bit.
 
 	return 0;
-  }	
+}	
 
 
 void proc_enable_tty ()
@@ -667,8 +666,7 @@ void proc_enable_tty ()
 	AssertRTS (uart_fd);					// our RTS tells other end it's okay to send.
 											// also tells the BCM20710 to use uart mode.
 
-	if (script_name [0])
-	  {
+	if (script_name [0]) {
 		int erc;
 
 		if (debug)
@@ -678,71 +676,66 @@ void proc_enable_tty ()
 
 		if (debug || erc)
 		  fprintf (stderr, "Script result = %d\n", erc);
-	  }
+	}
 
 	return;
 }
 
 
 void wait_cts (int fd)
-  {
+{
 	int status = TIOCM_RTS;
 
 	ioctl (fd, TIOCMGET, &status);
 
-	if (!(status & TIOCM_CTS))
-	  {
+	if (!(status & TIOCM_CTS)) {
 		if (debug)
 			fprintf (stderr, "Waiting CTS...");
 
-		while (!(status & TIOCM_CTS))
-		  {
+		while (!(status & TIOCM_CTS)) {
 			usleep (10000);
 			ioctl (fd, TIOCMGET, &status);
-		  }
+		}
 
 		if (debug)
 			fprintf (stderr, "done\n");
-	  }
+	}
 
 	return;
-  }
+}
 
 
 void read_prep (int fd)
-  {
+{
 	int status;
 
 	AssertRTS (fd);						// our RTS tells other end
 										// it's okay to send.
 	ioctl (fd, TIOCMGET, &status);
 
-	if (debug)
-	  {
+	if (debug) {
 		fprintf (stderr, "RTS = %x\n", (status & TIOCM_RTS) > 0);
 		fprintf (stderr, "CTS = %x\n", (status & TIOCM_CTS) > 0);
 		fprintf (stderr, "DTR = %x\n", (status & TIOCM_DTR) > 0);
 		fprintf (stderr, "DCD = %x\n", (status & TIOCM_CAR) > 0);
-	  }
+	}
 
 //	wait_cts (fd);						// probably futile
 
 	return;
-  }
+}
 
 
 int read_waitfor7 (int fd)
-  {
+{
 	int oldbytes, bytes = 0, sleeps = 0, sleep_limit = 100;
 
 	ioctl (fd, FIONREAD, &bytes);
 
-	if ((oldbytes = bytes) < 7)
-	  {
+	if ((oldbytes = bytes) < 7) {
 		if (debug)
 			fprintf (stderr, "Waiting for 7 bytes...");
-		while (bytes < 7)
-		  {
+		while (bytes < 7) {
 			usleep (1000);
 
 			ioctl (fd, FIONREAD, &bytes);
@@ -760,18 +753,18 @@ int read_waitfor7 (int fd)
 				reqd7 [0], reqd7 [1], reqd7 [2], reqd7 [3], reqd7 [4], reqd7 [5], reqd7 [6]);
 
 			return 1; 
-		  }
-	  }
+		}
+	}
 
 	if (debug)
 		fprintf (stderr, "done\n");
 
 	return 0;
-  }
+}
 
 
 int read_event (int fd, uchar *buffer)
-  {
+{
 	int i = 0;
 	int len = 3;
 	int count;
@@ -780,50 +773,45 @@ int read_event (int fd, uchar *buffer)
 	if (read_waitfor7 (fd) > 0)
 		return 1;
 
-	while ((count = read(fd, &buffer[i], len)) < len)
-	  {
+	while ((count = read(fd, &buffer[i], len)) < len) {
 		i += count;
 		len -= count;
-	  }
+	}
 
 	i += count;
 	len = buffer[2];
 
-	while ((count = read(fd, &buffer[i], len)) < len)
-	  {
+	while ((count = read(fd, &buffer[i], len)) < len) {
 		i += count;
 		len -= count;
-	  }
+	}
 
-	if (debug)
-	  {
+	if (debug) {
 		count += i;
 		fprintf(stderr, "received %d\n", count);
 		dump(buffer, count);
-	  }
+	}
     
-    if (memcmp (buffer, reqd7, 7))
-	  {
+    if (memcmp (buffer, reqd7, 7)) {
         fprintf (stderr, "Expected %02x%02x%02x%02x%02x%02x%02x\n",
             reqd7 [0], reqd7 [1], reqd7 [2], reqd7 [3], reqd7 [4], reqd7 [5], reqd7 [6]);
         fprintf (stderr, "Rcvd     %02x%02x%02x%02x%02x%02x%02x\n",
             buffer [0], buffer [1], buffer [2], buffer [3], buffer [4], buffer [5], buffer [6]);
 		return 2;
-      }
+    }
 
 	return 0;
-  }
+}
 
 
 void hci_send_cmd (uchar *buf, int len)
-  {
+{
 	wait_cts (uart_fd);
 
-	if (debug)
-	  {
+	if (debug) {
 		fprintf(stderr, "writing\n");
 		dump(buf, len);
-	  }
+	}
 
 	write (uart_fd, buf, len);
 
@@ -836,15 +824,14 @@ void hci_send_cmd (uchar *buf, int len)
     reqd7 [6] = 0x00;
 
 	return;
-  }
+}
 
 
 void proc_reset ()
-  {
+{
 	int		tries = 0;
 
-	while (1)
-	  {
+	while (1) {
 		hci_send_cmd(hci_reset, sizeof(hci_reset));
 
 		if (read_event (uart_fd, buffer) == 0)
@@ -855,13 +842,13 @@ void proc_reset ()
 
 		fprintf (stderr, "No reply to reset command\n");
 		exit (1);
-	  }
+	}
 
 	if (tosleep)
 		usleep (tosleep);
 
 	return;
-  }
+}
 
 
 void proc_patchram ()

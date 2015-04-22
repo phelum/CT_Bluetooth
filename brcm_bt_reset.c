@@ -39,16 +39,15 @@
 
 
 int acquire_uart (char *device_id)
-  {
+{
 	int 			uart_fd = -1;
 	struct termios	termios;
 
-	if ((uart_fd = open (device_id, O_RDWR | O_NOCTTY )) == -1)
-	  {
+	if ((uart_fd = open (device_id, O_RDWR | O_NOCTTY )) == -1) {
 		fprintf (stderr, "port %s could not be opened, error %d\n",
 					device_id, errno);
 		exit (-1);
-	  }
+	}
 
 	tcflush   (uart_fd, TCIOFLUSH);
 	tcgetattr (uart_fd, &termios);
@@ -69,11 +68,11 @@ int acquire_uart (char *device_id)
 	ioctl (uart_fd, TIOCMBIS, &status);				// set RTS bit.
 
     return uart_fd;
-  } 
+} 
 
 
 int fiddle_pins ()
-  {
+{
 	unsigned int * pc;
 	int fd;
 	unsigned int addr_start, addr_offset, PageSize, PageMask;
@@ -86,20 +85,18 @@ int fiddle_pins ()
 	addr_offset = SW_PORT_IO_BASE & ~PageMask;
 
 	fd = open ("/dev/mem", O_RDWR);
-	if (fd < 0)
-	  {
+	if (fd < 0) {
 		perror ("Unable to open /dev/mem");
 		return (-1);
-	  }
+	}
 
 	pc = mmap (0, PageSize*2, PROT_READ | PROT_WRITE, MAP_SHARED, fd, addr_start);
 
-	if (pc == MAP_FAILED)
-	  {
+	if (pc == MAP_FAILED) {
 		perror ("Unable to mmap file");
 		printf ("pc:%lx\n", (unsigned long) pc);
 		return (-2);
-	  }
+	}
 
 	ucptr = ((unsigned char *) pc) + addr_offset;
 	ulptr = (unsigned long *) ucptr;
@@ -127,17 +124,16 @@ int fiddle_pins ()
 	close (fd);
 
 	return 0;
-  }
+}
 
 
 int main (int argc, char *argv [])
-  {
+{
 	int 		uart_fd = -1;
 	int			erc = 0;
 
 
-	if (argc < 2)
-	  {
+	if (argc < 2) {
 		fprintf (stderr,	"Need serial port device name in tail\n"
 							"\n"
 							"Tail: <serial port> [init script]\n"
@@ -146,7 +142,7 @@ int main (int argc, char *argv [])
 							"if no init script, this program will toggle them using /dev/mem\n"
 			);
 		return 1;
-	  }
+	}
 
 	if (0 > (uart_fd = acquire_uart (argv [1])))
 		return 2;
