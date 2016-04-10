@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 ### BEGIN INIT INFO
 # Provides: bluetooth
 # Required-Start:    $local_fs $syslog $remote_fs dbus
@@ -146,7 +146,11 @@ case $1 in
 		exit 0
 	fi
 
-	. /usr/local/bin/bt.load
+#	Patch to load firmware to AP6210 via UART2
+
+	if [ -f $UART_CONF ] ; then
+		. /usr/local/bin/bt.load
+	fi
 
 	start-stop-daemon --start $SSD_OPTIONS
 	log_progress_msg "${DAEMON##*/}"
@@ -166,6 +170,13 @@ case $1 in
 	fi
 
 	log_end_msg 0
+
+#	Patch to listen on channel 22 for remote access.
+
+	if [ -x /usr/local/bin/bt.watch ] ; then
+		. /usr/local/bin/bt.watch
+	fi
+
   ;;
   stop)
 	log_daemon_msg "Stopping $DESC"

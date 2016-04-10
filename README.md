@@ -97,3 +97,5 @@ The patchram console output is redirected to /tmp/trace.  Without debug (set in
 the bt.load script) this output is minimal.  With debug it lists each transmit
 and receive.
 
+2016-04-11: The UART read procedure has been changed to cater for unwanted null
+bytes that sometimes appear when using ttyAMA0 on a Raspberry Pi 3.

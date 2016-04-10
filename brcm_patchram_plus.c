@@ -763,42 +763,99 @@ int read_waitfor7 (int fd)
 }
 
 
+int await_bytes (int fd, int len)
+{
+	int oldbytes, bytes = 0, sleeps = 0, sleep_limit = 100;
+
+	ioctl (fd, FIONREAD, &bytes);
+
+	if ((oldbytes = bytes) < len)
+      {
+		if (debug)
+			fprintf (stderr, "Waiting for %d bytes...", len);
+
+		while (bytes < len)
+          {
+			usleep (1000);
+
+			ioctl (fd, FIONREAD, &bytes);
+			if (bytes != oldbytes)
+				if (debug)
+					fprintf (stderr, "%d ", bytes);
+
+			oldbytes = bytes;
+
+			if (++sleeps < sleep_limit)
+				continue;
+
+			if (debug)
+				fprintf (stderr, "Timed out awaiting %d bytes\n", len);
+
+			return 1; 
+		  }
+
+       	if (debug)
+    		fprintf (stderr, "done\n");
+
+	  }
+
+	return 0;
+}
+
+
 int read_event (int fd, uchar *buffer)
 {
 	int i = 0;
 	int len = 3;
-	int count;
 
 	read_prep (fd);
-	if (read_waitfor7 (fd) > 0)
-		return 1;
 
-	while ((count = read(fd, &buffer[i], len)) < len) {
-		i += count;
-		len -= count;
-	}
+    while (i < 3)
+      {
+    	if (await_bytes (fd, 1) > 0)
+    		return 1;
 
-	i += count;
-	len = buffer[2];
+    	if (read (fd, &buffer [i], 1) < 1)
+            continue;
 
-	while ((count = read(fd, &buffer[i], len)) < len) {
-		i += count;
-		len -= count;
-	}
+        if (buffer [i] == reqd7 [i])
+            i++;
+        else
+        	if (debug)
+                fprintf (stderr, "Discarding byte %02x (unwanted)\n", buffer [i]);
 
-	if (debug) {
-		count += i;
-		fprintf(stderr, "received %d\n", count);
-		dump(buffer, count);
-	}
-    
-    if (memcmp (buffer, reqd7, 7)) {
+      }
+
+    len = buffer [2];
+    if (len != 4)
+      {
+        fprintf (stderr, "Expected len 4, got %02x\n", len);
+        len = 4;
+      }
+    len += i;
+
+    while (i < len)
+      {
+    	if (await_bytes (fd, len - i) > 0)
+    		return 1;
+
+    	i += read (fd, &buffer [i], len - i);
+      }
+
+	if (debug)
+      {
+		fprintf (stderr, "received %d\n", len);
+		dump (buffer, len);
+	  }
+
+    if (memcmp (buffer, reqd7, 7))
+      {
         fprintf (stderr, "Expected %02x%02x%02x%02x%02x%02x%02x\n",
             reqd7 [0], reqd7 [1], reqd7 [2], reqd7 [3], reqd7 [4], reqd7 [5], reqd7 [6]);
         fprintf (stderr, "Rcvd     %02x%02x%02x%02x%02x%02x%02x\n",
             buffer [0], buffer [1], buffer [2], buffer [3], buffer [4], buffer [5], buffer [6]);
 		return 2;
-    }
+      }
 
 	return 0;
 }

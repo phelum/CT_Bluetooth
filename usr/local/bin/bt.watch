@@ -1,0 +1,40 @@
+#!/bin/bash
+
+#	To enable remote login via bluetooth we listen on channel 22.
+#	We use rfcomm22 because it is unlikely to be used for anything else.
+#	This host must have mgetty installed (or you can change RECEIVER).
+
+#	The wait before starting the agent is required when the bluetooth
+#	service has just started.
+
+#	The test for the rfcomm watch is required because starting a duplicate
+#	results in an endless stream of connection already in use messages.
+
+PIN="2731"
+RECEIVER="setsid /sbin/mgetty -b -r -s 115200 rfcomm22"
+
+RFCOMM=/usr/bin/rfcomm
+[ -x /usr/local/bin/rfcomm ] && RFCOMM=/usr/local/bin/rfcomm
+#echo "rfcomm = $RFCOMM"
+
+AGENT_PID=`ps -o pid,cmd -C bluetooth-agent | grep -e 'bluetooth-agent' | awk '{print $1}'`
+WATCH_PID=`ps -o pid,cmd -C rfcomm | grep -e 'rfcomm.*watch 22' | awk '{print $1}'`
+#echo "agent = $AGENT_PID"
+#echo "watch = $WATCH_PID"
+
+if [ -x /sbin/mgetty ] ; then
+	if [ "$AGENT_PID" == "" ] ; then
+		sleep 1
+		echo "Starting agent"
+		/usr/bin/bluetooth-agent $PIN &
+	fi
+	if [ "$WATCH_PID" == "" ] ; then
+		/usr/bin/sdptool add --channel=22 SP
+		$RFCOMM -r watch 22 22 $RECEIVER &
+		sleep 1
+	fi
+	hciconfig hci0 piscan
+fi
+
+exit 0
+
